@@ -5,8 +5,9 @@ from faster_whisper import WhisperModel
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from ner import find_entities, redact_text
+from ner import find_entities, redact_text, Entity
 from audio_redact import find_silence_ranges, silence_audio
+from llm import find_entities_llm
 
 app = FastAPI(title="Voice Redactor")
 
@@ -20,6 +21,29 @@ model = WhisperModel(model_size, device=device, compute_type=compute_type)
 class ProcessRequest(BaseModel):
     job_id: str
     file_path: str
+
+
+def get_entities(text: str) -> list[Entity]:
+    entities = find_entities(text)
+    found_values = {e.value for e in entities}
+
+    for item in find_entities_llm(text):
+        value = item.get("value", "")
+        if not value or value in found_values:
+            continue
+        pos = text.find(value)
+        if pos == -1:
+            continue
+        entities.append(Entity(
+            type=item.get("type", "unknown"),
+            value=value,
+            start_char=pos,
+            end_char=pos + len(value),
+        ))
+        found_values.add(value)
+
+    entities.sort(key=lambda e: e.start_char)
+    return entities
 
 
 def transcribe_file(path: str) -> list[dict]:
@@ -52,7 +76,7 @@ def transcribe(file: UploadFile = File(...)):
         os.remove(tmp_path)
 
     transcript = " ".join(w["word"] for w in words)
-    entities = find_entities(transcript)
+    entities = get_entities(transcript)
 
     return {
         "words": words,
@@ -90,7 +114,7 @@ def redact_audio(
 def process(req: ProcessRequest):
     words = transcribe_file(req.file_path)
     transcript = " ".join(w["word"] for w in words)
-    entities = find_entities(transcript)
+    entities = get_entities(transcript)
     redacted = redact_text(transcript, entities)
 
     ext = req.file_path.rsplit(".", 1)[-1]
