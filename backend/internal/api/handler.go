@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +12,7 @@ import (
 	"github.com/tula-hack/voice-redaction/internal/service"
 )
 
-const maxUploadSize = 500 << 20 // 500 MB
+const maxUploadSize = 500 << 20
 
 var allowedAudioTypes = map[string]string{
 	"audio/mpeg":  ".mp3",
@@ -49,23 +48,22 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	ext, ok := allowedAudioTypes[header.Header.Get("Content-Type")]
+	ct := header.Header.Get("Content-Type")
+	ext, ok := allowedAudioTypes[ct]
 	if !ok {
 		buf := make([]byte, 512)
 		n, _ := file.Read(buf)
-		ext, ok = allowedAudioTypes[http.DetectContentType(buf[:n])]
+		sniffed := http.DetectContentType(buf[:n])
+		ext, ok = allowedAudioTypes[sniffed]
 		if !ok {
 			writeError(w, http.StatusUnsupportedMediaType, "unsupported audio format")
 			return
 		}
-		if _, err := file.Seek(0, io.SeekStart); err != nil {
-			writeError(w, http.StatusInternalServerError, "seek error")
-			return
-		}
+		file.Seek(0, io.SeekStart)
 	}
 
 	jobID := uuid.NewString()
-	destPath := filepath.Join(h.uploadDir, fmt.Sprintf("%s%s", jobID, ext))
+	destPath := filepath.Join(h.uploadDir, jobID+ext)
 
 	dst, err := os.Create(destPath)
 	if err != nil {
@@ -80,24 +78,65 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j := h.store.Create(jobID, destPath)
-	h.queue.Enqueue(j)
+	job := h.store.Create(jobID, destPath)
+	h.queue.Enqueue(job)
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"job_id": jobID})
+	writeJSON(w, map[string]string{"job_id": jobID})
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
-	j, err := h.store.Get(chi.URLParam(r, "id"))
+	job, err := h.store.Get(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "job not found")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(j)
+	writeJSON(w, job)
 }
 
+func (h *Handler) Transcript(w http.ResponseWriter, r *http.Request) {
+	job, err := h.store.Get(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "job not found")
+		return
+	}
+	if job.Status != service.StatusDone || job.Result == nil {
+		writeError(w, http.StatusConflict, "not ready yet")
+		return
+	}
+	writeJSON(w, job.Result)
+}
+
+func (h *Handler) RedactedAudio(w http.ResponseWriter, r *http.Request) {
+	job, err := h.store.Get(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "job not found")
+		return
+	}
+	if job.Result == nil || job.Result.RedactedAudioPath == "" {
+		writeError(w, http.StatusNotFound, "redacted audio not available")
+		return
+	}
+	http.ServeFile(w, r, job.Result.RedactedAudioPath)
+}
+
+func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
+	job, err := h.store.Get(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "job not found")
+		return
+	}
+	events := make([]service.PIIEvent, 0)
+	if job.Result != nil {
+		events = job.Result.PIIEvents
+	}
+	writeJSON(w, events)
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
+}
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")

@@ -33,6 +33,9 @@ func main() {
 
 	r.Post("/upload", h.Upload)
 	r.Get("/jobs/{id}", h.JobStatus)
+	r.Get("/transcript/{id}", h.Transcript)
+	r.Get("/audio/{id}/redacted", h.RedactedAudio)
+	r.Get("/logs/{id}", h.Logs)
 
 	slog.Info("starting server", "addr", cfg.addr)
 	if err := http.ListenAndServe(cfg.addr, r); err != nil {
