@@ -56,7 +56,8 @@ async function startRecording() {
   try {
     resetRecording()
     stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMime() })
+    const mimeType = supportedMime()
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data)
     }
@@ -80,8 +81,10 @@ function stopRecording() {
 }
 
 function finishRecording() {
-  const blob = new Blob(chunks, { type: mediaRecorder?.mimeType || 'audio/webm' })
-  const name = `voice-redaction-recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`
+  const mime = mediaRecorder?.mimeType || 'audio/webm'
+  const blob = new Blob(chunks, { type: mime })
+  const ext = mime.startsWith('audio/mp4') ? 'mp4' : mime.startsWith('audio/ogg') ? 'ogg' : 'webm'
+  const name = `voice-redaction-recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`
   const file = new File([blob], name, { type: blob.type })
   audioUrl.value = URL.createObjectURL(blob)
   emit('recorded', file, audioUrl.value)
@@ -134,9 +137,8 @@ function clearCanvas() {
 }
 
 function supportedMime() {
-  if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus'
-  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm'
-  return ''
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+  return candidates.find(m => MediaRecorder.isTypeSupported(m)) ?? ''
 }
 
 onBeforeUnmount(() => {

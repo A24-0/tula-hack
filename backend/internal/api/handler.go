@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,6 +23,8 @@ var allowedAudioTypes = map[string]string{
 	"audio/ogg":   ".ogg",
 	"audio/mp4":   ".m4a",
 	"audio/flac":  ".flac",
+	"audio/webm":  ".webm",
+	"video/webm":  ".webm",
 }
 
 type Handler struct {
@@ -49,12 +53,21 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	ct := header.Header.Get("Content-Type")
+	slog.Info("upload content-type", "raw", ct, "filename", header.Filename)
+	if mediaType, _, err := mime.ParseMediaType(ct); err == nil {
+		ct = mediaType
+	}
 	ext, ok := allowedAudioTypes[ct]
 	if !ok {
 		buf := make([]byte, 512)
 		n, _ := file.Read(buf)
 		sniffed := http.DetectContentType(buf[:n])
+		slog.Info("upload sniffed", "sniffed", sniffed)
 		ext, ok = allowedAudioTypes[sniffed]
+		// WebM magic bytes: 0x1a 0x45 0xDF 0xA3
+		if !ok && n >= 4 && buf[0] == 0x1a && buf[1] == 0x45 && buf[2] == 0xdf && buf[3] == 0xa3 {
+			ext, ok = ".webm", true
+		}
 		if !ok {
 			writeError(w, http.StatusUnsupportedMediaType, "unsupported audio format")
 			return

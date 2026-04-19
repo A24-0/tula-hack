@@ -12,7 +12,8 @@ from llm import find_entities_llm
 app = FastAPI(title="Voice Redactor")
 
 device = os.environ.get("WHISPER_DEVICE", "cpu")
-model_size = os.environ.get("WHISPER_MODEL", "small")
+model_size = os.environ.get("WHISPER_MODEL", "medium")
+whisper_language = os.environ.get("WHISPER_LANGUAGE", "ru")
 compute_type = "float16" if device == "cuda" else "int8"
 
 model = WhisperModel(model_size, device=device, compute_type=compute_type)
@@ -47,7 +48,13 @@ def get_entities(text: str) -> list[Entity]:
 
 
 def transcribe_file(path: str) -> list[dict]:
-    segments, _ = model.transcribe(path, word_timestamps=True, language="ru")
+    segments, _ = model.transcribe(
+        path,
+        language=whisper_language,
+        word_timestamps=True,
+        beam_size=5,
+        vad_filter=True,
+    )
     words = []
     for segment in segments:
         for w in segment.words:

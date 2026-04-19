@@ -1,6 +1,46 @@
+# Secrets and local env (never commit)
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+
+# Archives / dumps
+*.zip
+*.tar
+*.tar.gz
+
+# Frontend (root-level ignores; frontend/.gitignore also applies)
 frontend/node_modules/
 frontend/dist/
+frontend/vite-dev*.log
+
+# Go backend
 backend/uploads/*
 !backend/uploads/.gitkeep
+*.exe
+*.test
+*.out
+
+# Python ai-service
 ai-service/__pycache__/
-ai-service/*.pyc
+ai-service/*.py[cod]
+ai-service/.venv/
+ai-service/venv/
+**/__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+
+# Coverage / tooling
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
