@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - uploads:/uploads
+      - whisper_models:/models
     environment:
       WHISPER_DEVICE: cpu
       WHISPER_MODEL: small
@@ -33,7 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
   frontend:
     build: ./frontend
@@ -45,3 +46,4 @@ services:
 
 volumes:
   uploads:
+  whisper_models:

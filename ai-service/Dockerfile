@@ -4,6 +4,11 @@ RUN apt-get update && apt-get install -y ffmpeg curl && rm -rf /var/lib/apt/list
 
 WORKDIR /app
 
+ENV HF_HOME=/models \
+    XDG_CACHE_HOME=/models \
+    HF_HUB_CACHE=/models
+RUN mkdir -p /models
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
