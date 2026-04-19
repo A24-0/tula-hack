@@ -120,6 +120,19 @@ func (h *Handler) RedactedAudio(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, job.Result.RedactedAudioPath)
 }
 
+func (h *Handler) OriginalAudio(w http.ResponseWriter, r *http.Request) {
+	job, err := h.store.Get(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "job not found")
+		return
+	}
+	if job.FilePath == "" {
+		writeError(w, http.StatusNotFound, "original audio not available")
+		return
+	}
+	http.ServeFile(w, r, job.FilePath)
+}
+
 func (h *Handler) Logs(w http.ResponseWriter, r *http.Request) {
 	job, err := h.store.Get(chi.URLParam(r, "id"))
 	if err != nil {
