@@ -1,0 +1,62 @@
+services:
+  ai-service:
+    image: ${REGISTRY:-ghcr.io/a24-0}/tula-hack-ai-service:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    restart: always
+    environment:
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      GIGACHAT_API_KEY: ${GIGACHAT_API_KEY:-}
+    volumes:
+      - uploads:/uploads
+      - whisper_models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  backend:
+    image: ${REGISTRY:-ghcr.io/a24-0}/tula-hack-backend:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    restart: always
+    environment:
+      UPLOAD_DIR: /uploads
+      PROCESSOR_URL: http://ai-service:8000
+    volumes:
+      - uploads:/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  frontend:
+    image: ${REGISTRY:-ghcr.io/a24-0}/tula-hack-frontend:${TAG:-latest}
+    build: !reset null
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  uploads:
+  whisper_models:
