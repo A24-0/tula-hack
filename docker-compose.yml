@@ -8,6 +8,12 @@ services:
     environment:
       UPLOAD_DIR: /uploads
       PROCESSOR_URL: http://ai-service:8000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     depends_on:
       ai-service:
         condition: service_healthy
@@ -34,7 +40,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   uploads:

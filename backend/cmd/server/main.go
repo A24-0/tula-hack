@@ -32,6 +32,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Post("/upload", h.Upload)
+	r.Get("/health", h.Health)
 	r.Get("/jobs/{id}", h.JobStatus)
 	r.Get("/transcript/{id}", h.Transcript)
 	r.Get("/audio/{id}/redacted", h.RedactedAudio)
