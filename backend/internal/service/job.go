@@ -17,11 +17,18 @@ type PIIEvent struct {
 	EndSec   float64 `json:"end_sec"`
 }
 
+type Word struct {
+	Word  string  `json:"word"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
 type Result struct {
 	Transcript         string     `json:"transcript"`
 	RedactedTranscript string     `json:"redacted_transcript"`
 	RedactedAudioPath  string     `json:"redacted_audio_path,omitempty"`
 	PIIEvents          []PIIEvent `json:"pii_events"`
+	Words              []Word     `json:"words,omitempty"`
 }
 
 type Job struct {

@@ -141,4 +141,5 @@ def process(req: ProcessRequest):
         "redacted_transcript": redacted,
         "redacted_audio_path": redacted_audio_path,
         "pii_events": pii_events,
+        "words": words,
     }

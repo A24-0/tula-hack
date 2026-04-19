@@ -52,11 +52,21 @@ func (q *Queue) run() {
 			})
 		}
 
+		var words []Word
+		for _, w := range resp.Words {
+			words = append(words, Word{
+				Word:  w.Word,
+				Start: w.Start,
+				End:   w.End,
+			})
+		}
+
 		q.store.SetDone(j.ID, &Result{
 			Transcript:         resp.Transcript,
 			RedactedTranscript: resp.RedactedTranscript,
 			RedactedAudioPath:  resp.RedactedAudioPath,
 			PIIEvents:          events,
+			Words:              words,
 		})
 		slog.Info("job done", "job", j.ID)
 	}
